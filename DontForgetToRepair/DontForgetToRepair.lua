@@ -70,7 +70,7 @@ local function CheckDurability()
                 local durability = (current / maximum) * 100
                 if durability < DurabilityWarningDB.durabilityThreshold then
                     lowDurabilityFound = true
-                    warningFrame.text:SetText("Don't forget to repair, " .. durability .. "% durability")
+                    warningFrame.text:SetText("Don't forget to repair, " .. math.floor(durability) .. "% durability")
                     break
                 end
             end
