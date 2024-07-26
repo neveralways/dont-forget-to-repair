@@ -1,10 +1,10 @@
 -- Create panel in game options panel
 -- ------------------------------------------------------------------------------------------------------------------------------------------------
-local optionsPanel = CreateFrame("Frame")
+local optionsPanel = CreateFrame("Frame", "DontForgetToRepairOptionsPanel", UIParent)
 optionsPanel.name = "DontForgetToRepair " .. GetAddOnMetadata("DontForgetToRepair", "Version")
 
 local title = optionsPanel:CreateFontString("ARTWORK", nil, "GameFontNormalLarge")
-title:SetPoint("TOP")
+title:SetPoint("TOP", 0, -10)
 title:SetText(optionsPanel.name)
 
 local thresholdSlider = CreateFrame("Slider", "DurabilityThresholdSlider", optionsPanel, "OptionsSliderTemplate")
@@ -31,4 +31,7 @@ end)
 DurabilityThresholdSliderLow:SetText("1%")
 DurabilityThresholdSliderHigh:SetText("100%")
 
-InterfaceOptions_AddCategory(optionsPanel)
+if SettingsPanel then
+    local category, layout = Settings.RegisterCanvasLayoutCategory(optionsPanel, "DontForgetToRepair")
+    Settings.RegisterAddOnCategory(category)
+end
