@@ -1,0 +1,9 @@
+package-as: DontForgetToRepair
+
+enable-nolib-creation: no
+
+move-folders:
+  DontForgetToRepair/src: DontForgetToRepair
+
+ignore:
+  - README.md
