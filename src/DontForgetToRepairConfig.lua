@@ -1,7 +1,7 @@
 -- Create panel in game options panel
 -- ------------------------------------------------------------------------------------------------------------------------------------------------
 local optionsPanel = CreateFrame("Frame", "DontForgetToRepairOptionsPanel", UIParent)
-optionsPanel.name = "DontForgetToRepair " .. GetAddOnMetadata("DontForgetToRepair", "Version")
+optionsPanel.name = "DontForgetToRepair " .. C_AddOns.GetAddOnMetadata("DontForgetToRepair", "Version")
 
 local title = optionsPanel:CreateFontString("ARTWORK", nil, "GameFontNormalLarge")
 title:SetPoint("TOP", 0, -10)
