@@ -1,4 +1,4 @@
-## Interface: 110105
+## Interface: 110107
 ## Title: Dont forget to repair
 ## Notes: DurabilityWarning alerts you when the durability of your gear drops below a certain threshold.
 ## Author: Neveralways
