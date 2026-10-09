@@ -85,7 +85,7 @@ scrollFrame:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", 8, -8)
 scrollFrame:SetPoint("BOTTOMRIGHT", contentFrame, "BOTTOMRIGHT", -28, 8)
 
 local scrollChild = CreateFrame("Frame", nil, scrollFrame)
-scrollChild:SetSize(440, 600)
+scrollChild:SetSize(440, 730)
 scrollFrame:SetScrollChild(scrollChild)
 
 -- ================================================================================
@@ -135,9 +135,67 @@ thresholdSlider:SetScript("OnValueChanged", function(self, value)
 end)
 
 -- ================================================================================
+-- Section: Auto Repair
+-- ================================================================================
+local repairHeader = CreateSectionHeader(scrollChild, "Auto Repair", -100)
+
+local repairDesc = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+repairDesc:SetPoint("TOPLEFT", repairHeader, "BOTTOMLEFT", 0, -15)
+repairDesc:SetWidth(420)
+repairDesc:SetJustifyH("LEFT")
+repairDesc:SetText("Repair your gear automatically when visiting a merchant.")
+
+local autoRepairCheck = CreateFrame("CheckButton", "DFTRAutoRepairCheck", scrollChild, "UICheckButtonTemplate")
+autoRepairCheck:SetPoint("TOPLEFT", repairDesc, "BOTTOMLEFT", 5, -10)
+autoRepairCheck.text = autoRepairCheck:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+autoRepairCheck.text:SetPoint("LEFT", autoRepairCheck, "RIGHT", 5, 0)
+autoRepairCheck.text:SetText("|cFFFFFFFFRepair automatically|r")
+
+autoRepairCheck:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText("Repair all your items when you open a merchant that can repair. The cost is shown in the chat.", 1, 1, 1, 1, true)
+    GameTooltip:Show()
+end)
+autoRepairCheck:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+-- Guild funds checkbox (indent)
+local guildFundsCheck = CreateFrame("CheckButton", "DFTRGuildFundsCheck", scrollChild, "UICheckButtonTemplate")
+guildFundsCheck:SetPoint("TOPLEFT", autoRepairCheck, "BOTTOMLEFT", 20, -2)
+guildFundsCheck.text = guildFundsCheck:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+guildFundsCheck.text:SetPoint("LEFT", guildFundsCheck, "RIGHT", 5, 0)
+
+guildFundsCheck:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetText("Use guild bank money when you have permission and the guild can pay the whole repair. Otherwise your own gold is used.", 1, 1, 1, 1, true)
+    GameTooltip:Show()
+end)
+guildFundsCheck:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+local function UpdateAutoRepairOptions()
+    local autoRepair = DurabilityWarningDB and DurabilityWarningDB.autoRepair or false
+    autoRepairCheck:SetChecked(autoRepair)
+    guildFundsCheck:SetChecked(DurabilityWarningDB and DurabilityWarningDB.useGuildFunds or false)
+    guildFundsCheck:SetEnabled(autoRepair)
+    if autoRepair then
+        guildFundsCheck.text:SetText("|cFF888888Use guild funds first|r")
+    else
+        guildFundsCheck.text:SetText("|cFF555555Use guild funds first|r")
+    end
+end
+
+autoRepairCheck:SetScript("OnClick", function(self)
+    DurabilityWarningDB.autoRepair = self:GetChecked()
+    UpdateAutoRepairOptions()
+end)
+
+guildFundsCheck:SetScript("OnClick", function(self)
+    DurabilityWarningDB.useGuildFunds = self:GetChecked()
+end)
+
+-- ================================================================================
 -- Section: Notification Type
 -- ================================================================================
-local notifHeader = CreateSectionHeader(scrollChild, "Notification Type", -100)
+local notifHeader = CreateSectionHeader(scrollChild, "Notification Type", -230)
 
 local notifDesc = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 notifDesc:SetPoint("TOPLEFT", notifHeader, "BOTTOMLEFT", 0, -15)
@@ -210,7 +268,7 @@ end)
 -- ================================================================================
 -- Section: Sound Settings
 -- ================================================================================
-local soundHeader = CreateSectionHeader(scrollChild, "Sound Settings", -280)
+local soundHeader = CreateSectionHeader(scrollChild, "Sound Settings", -410)
 
 local soundDesc = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 soundDesc:SetPoint("TOPLEFT", soundHeader, "BOTTOMLEFT", 0, -15)
@@ -241,9 +299,10 @@ local soundLabel = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlig
 soundLabel:SetPoint("TOPLEFT", soundCheck, "BOTTOMLEFT", 5, -15)
 soundLabel:SetText("Sound effect:")
 
--- Sound dropdown
-local soundDropdown = CreateFrame("Frame", "DFTRSoundDropdown", scrollChild, "UIDropDownMenuTemplate")
-soundDropdown:SetPoint("LEFT", soundLabel, "RIGHT", -5, -2)
+-- Sound dropdown (modern menu system, UIDropDownMenu is deprecated since 11.0)
+local soundDropdown = CreateFrame("DropdownButton", "DFTRSoundDropdown", scrollChild, "WowStyle1DropdownTemplate")
+soundDropdown:SetPoint("LEFT", soundLabel, "RIGHT", 10, 0)
+soundDropdown:SetWidth(150)
 
 local soundOptions = {
     { text = "Raid Warning", value = "RAID_WARNING" },
@@ -253,32 +312,27 @@ local soundOptions = {
     { text = "Ready Check", value = "READY_CHECK" },
 }
 
-local function SoundDropdown_OnClick(self, arg1)
-    DurabilityWarningDB.soundFile = arg1
-    UIDropDownMenu_SetText(soundDropdown, self:GetText())
+local function IsSoundSelected(value)
+    local currentSound = DurabilityWarningDB and DurabilityWarningDB.soundFile or "RAID_WARNING"
+    return currentSound == value
+end
+
+local function SetSoundSelected(value)
+    DurabilityWarningDB.soundFile = value
     if addon.PlayWarningSound then
         addon.PlayWarningSound()
     end
 end
 
-local function SoundDropdown_Initialize(self, level)
-    local currentSound = DurabilityWarningDB and DurabilityWarningDB.soundFile or "RAID_WARNING"
-    for i, option in ipairs(soundOptions) do
-        local info = UIDropDownMenu_CreateInfo()
-        info.text = option.text
-        info.arg1 = option.value
-        info.func = SoundDropdown_OnClick
-        info.checked = (currentSound == option.value)
-        UIDropDownMenu_AddButton(info, level)
+soundDropdown:SetupMenu(function(dropdown, rootDescription)
+    for _, option in ipairs(soundOptions) do
+        rootDescription:CreateRadio(option.text, IsSoundSelected, SetSoundSelected, option.value)
     end
-end
-
-UIDropDownMenu_SetWidth(soundDropdown, 140)
-UIDropDownMenu_Initialize(soundDropdown, SoundDropdown_Initialize)
+end)
 
 -- Test sound button
 local testSoundBtn = CreateFrame("Button", nil, scrollChild, "UIPanelButtonTemplate")
-testSoundBtn:SetPoint("LEFT", soundDropdown, "RIGHT", 5, 2)
+testSoundBtn:SetPoint("LEFT", soundDropdown, "RIGHT", 8, 0)
 testSoundBtn:SetSize(70, 24)
 testSoundBtn:SetText("Test")
 testSoundBtn:SetScript("OnClick", function()
@@ -290,7 +344,7 @@ end)
 -- ================================================================================
 -- Section: Minimap Icon
 -- ================================================================================
-local minimapHeader = CreateSectionHeader(scrollChild, "Minimap Icon", -400)
+local minimapHeader = CreateSectionHeader(scrollChild, "Minimap Icon", -530)
 
 local minimapDesc = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 minimapDesc:SetPoint("TOPLEFT", minimapHeader, "BOTTOMLEFT", 0, -15)
@@ -322,7 +376,7 @@ end)
 -- ================================================================================
 -- Section: Commands
 -- ================================================================================
-local cmdHeader = CreateSectionHeader(scrollChild, "Slash Commands", -480)
+local cmdHeader = CreateSectionHeader(scrollChild, "Slash Commands", -610)
 
 local cmdText = scrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 cmdText:SetPoint("TOPLEFT", cmdHeader, "BOTTOMLEFT", 10, -15)
@@ -365,18 +419,14 @@ configFrame:SetScript("OnShow", function(self)
         thresholdValue:SetText("|cFF00FF00" .. (DurabilityWarningDB.durabilityThreshold or 50) .. "%|r")
         DFTRThresholdSliderText:SetText("")
         
+        UpdateAutoRepairOptions()
         UpdateNotificationOptions()
-        
+
         soundCheck:SetChecked(DurabilityWarningDB.enableSound)
         minimapCheck:SetChecked(not DurabilityWarningDB.minimapIcon.hide)
-        
-        -- Update sound dropdown text
-        for _, option in ipairs(soundOptions) do
-            if option.value == DurabilityWarningDB.soundFile then
-                UIDropDownMenu_SetText(soundDropdown, option.text)
-                break
-            end
-        end
+
+        -- Refresh the sound dropdown so it shows the saved sound
+        soundDropdown:GenerateMenu()
     end
 end)
 

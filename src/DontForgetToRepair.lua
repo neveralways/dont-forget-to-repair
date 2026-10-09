@@ -11,6 +11,7 @@ frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("UPDATE_INVENTORY_DURABILITY")
 frame:RegisterEvent("PLAYER_REGEN_ENABLED")
 frame:RegisterEvent("MERCHANT_SHOW")
+frame:RegisterEvent("MERCHANT_CLOSED")
 frame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 
 local defaults = {
@@ -19,6 +20,8 @@ local defaults = {
     soundFile = "RAID_WARNING",
     notificationType = "popup", -- "popup", "toast", "chat"
     enableToastAlso = false,
+    autoRepair = true,
+    useGuildFunds = false,
     framePosition = nil,
     minimapIcon = { hide = false },
     minimapAngle = 220,
@@ -464,6 +467,64 @@ local function ResetWarning()
 end
 
 -- ================================================================================
+-- Auto Repair
+-- ================================================================================
+local merchantOpen = false
+
+local function PrintRepairMessage(message)
+    print("|cFF00FF00[Don't Forget to Repair]|r " .. message)
+end
+
+-- Money the player can spend from the guild bank (same rules as the merchant's guild repair button)
+local function GetGuildRepairMoney()
+    if not IsInGuild() or not CanGuildBankRepair() then
+        return 0
+    end
+    local guildBankMoney = GetGuildBankMoney()
+    local withdrawMoney = GetGuildBankWithdrawMoney()
+    if withdrawMoney == -1 then
+        -- No withdraw limit (guild master)
+        return guildBankMoney
+    end
+    return math.min(withdrawMoney, guildBankMoney)
+end
+
+local function RepairWithOwnMoney(cost)
+    if GetMoney() < cost then
+        PrintRepairMessage("|cFFFF3333Not enough gold to repair|r (" .. GetMoneyString(cost, true) .. " needed)")
+        return
+    end
+    RepairAllItems()
+    PrintRepairMessage("Repaired for " .. GetMoneyString(cost, true))
+end
+
+local function AutoRepair()
+    if not DurabilityWarningDB.autoRepair or not CanMerchantRepair() then
+        return
+    end
+
+    local cost, canRepair = GetRepairAllCost()
+    if not canRepair or cost <= 0 then
+        return
+    end
+
+    if DurabilityWarningDB.useGuildFunds and GetGuildRepairMoney() >= cost then
+        RepairAllItems(true)
+        -- The guild bank money known by the client can be outdated, so check that the guild actually paid
+        C_Timer.After(1, function()
+            local remainingCost = merchantOpen and GetRepairAllCost() or 0
+            if remainingCost > 0 then
+                RepairWithOwnMoney(remainingCost)
+            else
+                PrintRepairMessage("Repaired for " .. GetMoneyString(cost, true) .. " using guild funds")
+            end
+        end)
+    else
+        RepairWithOwnMoney(cost)
+    end
+end
+
+-- ================================================================================
 -- Slash Commands
 -- ================================================================================
 SLASH_DFTR1 = "/dftr"
@@ -555,7 +616,11 @@ frame:SetScript("OnEvent", function(self, event, ...)
     elseif event == "PLAYER_REGEN_ENABLED" then
         CheckDurability()
     elseif event == "MERCHANT_SHOW" then
+        merchantOpen = true
         ResetWarning()
+        AutoRepair()
+    elseif event == "MERCHANT_CLOSED" then
+        merchantOpen = false
     elseif event == "ZONE_CHANGED_NEW_AREA" then
         shownWarning = true
         CheckDurability()

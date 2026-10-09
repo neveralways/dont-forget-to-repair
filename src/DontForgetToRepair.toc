@@ -2,7 +2,7 @@
 ## Title: Dont forget to repair
 ## Notes: DurabilityWarning alerts you when the durability of your gear drops below a certain threshold.
 ## Author: Neveralways
-## Version: 2.0.0
+## Version: 2.1.0
 ## SavedVariables: DurabilityWarningDB
 DontForgetToRepair.lua
 DontForgetToRepairConfig.lua
